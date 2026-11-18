@@ -19,8 +19,14 @@ public class TaskController {
     private final AtomicLong counter = new AtomicLong(0);
 
     @GetMapping
-    public List<Task> getAllTasks() {
-        return new ArrayList<>(tasks.values());
+    public List<Task> getAllTasks(@RequestParam(required = false) Boolean done) {
+        if (done == null) {
+            return new ArrayList<>(tasks.values());
+        }
+
+        return tasks.values().stream()
+                .filter(task -> task.done() == done)
+                .toList();
     }
 
     @GetMapping("/{id}")
@@ -32,6 +38,23 @@ public class TaskController {
         }
 
         return ResponseEntity.ok(task);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<Task> updateTask(
+            @PathVariable long id,
+            @Valid @RequestBody UpdateTaskRequest request
+    ) {
+        Task updated = tasks.computeIfPresent(
+                id,
+                (taskId, oldTask) -> new Task(taskId, request.title(), request.done())
+        );
+
+        if (updated == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(updated);
     }
 
     @PostMapping
