@@ -29,6 +29,11 @@ public class TaskController {
                 .toList();
     }
 
+    @GetMapping("/count")
+    public TaskCountResponse getTaskCount() {
+        return TaskCountResponse.from(tasks.values());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Task> getTask(@PathVariable long id) {
         Task task = tasks.get(id);

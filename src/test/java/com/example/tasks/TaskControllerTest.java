@@ -195,6 +195,93 @@ class TaskControllerTest {
                 .andExpect(jsonPath("$.length()").value(2));
     }
 
+    @Test
+    void getTaskCountWhenEmptyReturnsZeros() throws Exception {
+        mockMvc.perform(get("/tasks/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(0))
+                .andExpect(jsonPath("$.done").value(0));
+    }
+
+    @Test
+    void getTaskCountWithTasksReturnsCorrectCounts() throws Exception {
+        createTask("Task 1", false);
+        createTask("Task 2", true);
+        createTask("Task 3", true);
+
+        mockMvc.perform(get("/tasks/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(3))
+                .andExpect(jsonPath("$.done").value(2));
+    }
+
+    @Test
+    void getTaskCountAllDone() throws Exception {
+        createTask("Task 1", true);
+        createTask("Task 2", true);
+
+        mockMvc.perform(get("/tasks/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.done").value(2));
+    }
+
+    @Test
+    void getTaskCountNoneDone() throws Exception {
+        createTask("Task 1", false);
+        createTask("Task 2", false);
+
+        mockMvc.perform(get("/tasks/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(2))
+                .andExpect(jsonPath("$.done").value(0));
+    }
+
+    @Test
+    void getTaskCountAfterDeleteUpdatesCount() throws Exception {
+        createTask("Task 1", false);
+        createTask("Task 2", true);
+
+        mockMvc.perform(delete("/tasks/2"))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/tasks/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.done").value(0));
+    }
+
+    @Test
+    void getTaskCountAfterUpdateUpdatesDoneCount() throws Exception {
+        createTask("Task 1", false);
+
+        mockMvc.perform(get("/tasks/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.done").value(0));
+
+        mockMvc.perform(put("/tasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "title": "Task 1",
+                                    "done": true
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/tasks/count"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.total").value(1))
+                .andExpect(jsonPath("$.done").value(1));
+    }
+
+    @Test
+    void postTaskCountReturns405() throws Exception {
+        mockMvc.perform(post("/tasks/count"))
+                .andExpect(status().isMethodNotAllowed());
+    }
+
     private void createTask(String title, boolean done) throws Exception {
         mockMvc.perform(post("/tasks")
                         .contentType(MediaType.APPLICATION_JSON)
