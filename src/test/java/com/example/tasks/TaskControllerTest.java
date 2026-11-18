@@ -94,6 +94,119 @@ class TaskControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    @Test
+    void updateTaskReturns200AndPreservesId() throws Exception {
+        createSampleTask();
+
+        mockMvc.perform(put("/tasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "title": "Learn Spring Boot",
+                                    "done": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Learn Spring Boot"))
+                .andExpect(jsonPath("$.done").value(true));
+
+        mockMvc.perform(get("/tasks/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Learn Spring Boot"))
+                .andExpect(jsonPath("$.done").value(true));
+    }
+
+    @Test
+    void updateMissingTaskReturns404() throws Exception {
+        mockMvc.perform(put("/tasks/999")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "title": "Learn Spring Boot",
+                                    "done": true
+                                }
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void updateTaskWithBlankTitleReturns400() throws Exception {
+        createSampleTask();
+
+        mockMvc.perform(put("/tasks/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "title": "   ",
+                                    "done": true
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getAllTasksFilterByDoneTrue() throws Exception {
+        createTask("Task 1", false);
+        createTask("Task 2", true);
+
+        mockMvc.perform(get("/tasks").param("done", "true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Task 2"))
+                .andExpect(jsonPath("$[0].done").value(true));
+    }
+
+    @Test
+    void getAllTasksFilterByDoneFalse() throws Exception {
+        createTask("Task 1", false);
+        createTask("Task 2", true);
+
+        mockMvc.perform(get("/tasks").param("done", "false"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].title").value("Task 1"))
+                .andExpect(jsonPath("$[0].done").value(false));
+    }
+
+    @Test
+    void getAllTasksFilterWhenNoTasksMatchReturnsEmptyList() throws Exception {
+        createTask("Task 1", false);
+
+        mockMvc.perform(get("/tasks").param("done", "true"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+    }
+
+    @Test
+    void getAllTasksWithInvalidDoneFilterReturns400() throws Exception {
+        mockMvc.perform(get("/tasks").param("done", "abc"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getAllTasksWithoutFilterReturnsAll() throws Exception {
+        createTask("Task 1", false);
+        createTask("Task 2", true);
+
+        mockMvc.perform(get("/tasks"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2));
+    }
+
+    private void createTask(String title, boolean done) throws Exception {
+        mockMvc.perform(post("/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                    "title": "%s",
+                                    "done": %s
+                                }
+                                """.formatted(title, done)))
+                .andExpect(status().isCreated());
+    }
+
     private void createSampleTask() throws Exception {
         mockMvc.perform(post("/tasks")
                         .contentType(MediaType.APPLICATION_JSON)
